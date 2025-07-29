@@ -1,0 +1,3 @@
+target/
+timescaledb-data/
+grafana_data/
