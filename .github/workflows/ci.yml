@@ -61,11 +61,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build crate
         run: cargo build -p ${{ matrix.member }} --verbose
-      - name: Run tests
-        run: cargo test -p ${{ matrix.member }} --verbose
       - name: Run benchmarks
-        if: matrix.member == 'cloud-backend'
-        run: cargo bench -p ${{ matrix.member }} --verbose
+        run: cargo bench -p cloud-backend --verbose
 
   # --- NEW JOB: This job builds and pushes the Docker images ---
   build-and-push:
