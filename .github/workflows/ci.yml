@@ -1,0 +1,87 @@
+name: Kasi Power CI & Benchmark
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # This first job discovers which crates are in our workspace.
+  list-members:
+    name: List workspace crates
+    runs-on: ubuntu-latest
+    outputs:
+      members: ${{ steps.list.outputs.members }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v2
+        with:  
+            registry: ghcr.io 
+            username: ${{ github.actor}}
+            password: ${{ secrets.GITHUB_TOKEN}}
+            
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain-action@stable
+        with:
+          toolchain: stable
+      
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Get workspace members as a JSON array
+        id: list
+        run: |
+          MEMBERS=$(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members | map(sub(" .*"; ""))' | jq -c .)
+          echo "Found members: $MEMBERS"
+          echo "members=$MEMBERS" >> $GITHUB_OUTPUT
+
+  # This job runs for each crate found in the job above.
+  build-test-bench:
+    name: CI for ${{ matrix.member }}
+    needs: list-members
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        member: ${{ fromJson(needs.list-members.outputs.members) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain-action@stable
+        with:
+          toolchain: stable
+
+      - name: Install system dependencies (OpenSSL)
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build crate
+        run: cargo build -p ${{ matrix.member }} --verbose
+
+      - name: Run tests
+        run: cargo test -p ${{ matrix.member }} --verbose
+      
+      # This step will only run for the 'cloud-backend' crate.
+      - name: Run benchmarks
+        if: matrix.member == 'cloud-backend'
+        run: cargo bench -p ${{ matrix.member }} --verbose
