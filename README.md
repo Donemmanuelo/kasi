@@ -1,7 +1,7 @@
 # Kasi Power v3.0
 
 ![Rust Version](https://img.shields.io/badge/rust-stable-orange.svg)![Platform](https://img.shields.io/badge/platform-docker-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Donemmanuelo/kasi/blob/main/LICENSE)
 [![CI & Benchmark](https://github.com/<YOUR_USERNAME>/<YOUR_REPO>/actions/workflows/ci.yml/badge.svg)](https://github.com/donemmanuelo/kasi/actions/workflows/ci.yml)
 
 **An intelligent, autonomous IoT platform for monitoring and remotely controlling hybrid energy systems.**
@@ -165,4 +165,4 @@ kasi-power-v3/
 - Fleet Management: Enhance the dashboard to monitor and command thousands of sites from a single map-based UI.
 
 ## License
-This project is licensed under the [LICENSE](https://github.com/donemmanuelo/kasi/main/LICENSE)
+This project is licensed under the [LICENSE](https://github.com/Donemmanuelo/kasi/blob/main/LICENSE)
