@@ -1,5 +1,58 @@
-version: '3.8'
 services:
-  mosquitto: { image: eclipse-mosquitto:2.0, container_name: mosquitto-v3, ports: ["1883:1883"], volumes: ["./mosquitto/config:/mosquitto/config"] }
-  timescaledb: { image: timescale/timescaledb:latest-pg14, container_name: timescaledb-v3, environment: ["POSTGRES_PASSWORD=kasi_power_pass"], ports: ["5432:5432"], volumes: ["./timescaledb_data:/var/lib/postgresql/data"] }
-  grafana: { image: grafana/grafana-oss:latest, container_name: grafana-v3, ports: ["3000:3000"], environment: ["GF_SECURITY_ADMIN_USER=admin", "GF_SECURITY_ADMIN_PASSWORD=admin"], volumes: ["./grafana_data:/var/lib/grafana"] }
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto-v3
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    container_name: timescaledb-v3
+    environment:
+      - POSTGRES_PASSWORD=kasi_power_pass
+    ports:
+      - "5432:5432" # Expose for local debugging
+    volumes:
+      - ./timescaledb_data:/var/lib/postgresql/data
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana-v3
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+    depends_on:
+      - timescaledb
+
+  # Our custom Cloud Backend Service
+  cloud-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Pass the package name to the Dockerfile
+        APP_NAME: cloud-backend
+    container_name: cloud-backend-v3
+    depends_on:
+      - mosquitto
+      - timescaledb
+    env_file:
+      - .env
+
+  # Our custom Firmware Simulator
+  firmware:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Pass the package name to the Dockerfile
+        APP_NAME: firmware
+    container_name: firmware-v3
+    depends_on:
+      - mosquitto
