@@ -139,7 +139,14 @@ WHERE
   $__timeFilter(time)
 ORDER BY time
 ```
+## Benchmaking
+To know the performance of this program we use the benchmarking tool as shown below:
+```bash
+cargo bench -p cloud-backend
+```
+Here is an illustration of how the benchmark looks like:
 
+![image](https://github.com/Donemmanuelo/kasi/blob/main/Screen%20Shot%202025-07-30%20at%2013.44.09.png)
 ## Project Structure
 
 The project is a Rust workspace with two main packages and supporting configuration.
