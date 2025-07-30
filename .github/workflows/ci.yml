@@ -28,9 +28,9 @@ jobs:
             password: ${{ secrets.GITHUB_TOKEN}}
             
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
-         toolchain: stable
+          toolchain: stable
       
       - name: Install jq
         run: sudo apt-get install -y jq
@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
 
