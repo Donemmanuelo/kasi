@@ -78,8 +78,8 @@ jobs:
       - name: Build crate
         run: cargo build -p ${{ matrix.member }} --verbose
 
-      - name: Run tests
-        run: cargo test -p ${{ matrix.member }} --verbose
+      - name: Run benchmarking
+        run: cargo bench -p ${{ matrix.member }} --verbose
       
       # This step will only run for the 'cloud-backend' crate.
       - name: Run benchmarks
