@@ -2,7 +2,7 @@
 
 ![Rust Version](https://img.shields.io/badge/rust-stable-orange.svg)![Platform](https://img.shields.io/badge/platform-docker-blue.svg)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Donemmanuelo/kasi/blob/main/LICENSE)
-[![CI & Benchmark](https://github.com/<YOUR_USERNAME>/<YOUR_REPO>/actions/workflows/ci.yml/badge.svg)]( `/home/runner/work/kasi/kasi/target/release/deps/cloud_backend-0786e49ed2e75c70 --bench`)
+[![CI & Benchmark](https://github.com/Donemmanuelo/kasi/actions/runs/16620371272/job/47023066483)
 
 **An intelligent, autonomous IoT platform for monitoring and remotely controlling hybrid energy systems.**
 
