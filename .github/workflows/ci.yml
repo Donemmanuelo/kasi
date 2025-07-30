@@ -28,9 +28,9 @@ jobs:
             password: ${{ secrets.GITHUB_TOKEN}}
             
       - name: Install Rust toolchain
-        uses: actions/setup-rust@v1
+        uses: dtolnay/rust-toolchain-action@stable
         with:
-          rust-version: stable
+         toolchain: stable
       
       - name: Install jq
         run: sudo apt-get install -y jq
@@ -57,9 +57,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: actions/setup-rust@v1
+        uses: dtolnay/rust-toolchain-action@stable
         with:
-          rust-version: stable
+          toolchain: stable
 
       - name: Install system dependencies (OpenSSL)
         run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
