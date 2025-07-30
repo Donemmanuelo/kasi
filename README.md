@@ -2,19 +2,17 @@
 
 ![Rust Version](https://img.shields.io/badge/rust-stable-orange.svg)![Platform](https://img.shields.io/badge/platform-docker-blue.svg)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Donemmanuelo/kasi/blob/main/LICENSE)
-[![CI & Benchmark](https://github.com/Donemmanuelo/kasi/actions/runs/16620371272/job/47023066483)
-
 **An intelligent, autonomous IoT platform for monitoring and remotely controlling hybrid energy systems.**
 
 Kasi Power is a complete, end-to-end system designed to tackle real-world power challenges. It creates a smart, self-optimizing, and resilient energy grid by ingesting data from remote sites, enriching it with external intelligence like weather forecasts, and sending predictive control commands back to optimize performance, save fuel, and prevent outages.
 
 ## Core Features
 
-*   ** Remote Monitoring:** A Rust-based `firmware` simulator mimics a remote power site, sending real-time telemetry (voltage, fuel level, power load, active source, etc.) over MQTT.
-*   ** Smart & Predictive Control:** A cloud-based Rust `backend` service subscribes to the data, fetches live weather forecasts, and calculates predictive runtimes for both the battery and the diesel fuel tank.
-*   ** Autonomous Decision-Making:** The backend sends a complete "strategic command" to the firmware, which uses this advice to make its own tactical decisions, including switching power sources or performing an emergency shutdown.
-*   ** Live Dashboard:** All historical data is stored in a TimescaleDB database and is ready to be visualized on a professional Grafana dashboard.
-*   ** Scalable & Production-Ready Architecture:** The entire system is containerized with Docker and uses an MQTT message broker, making it robust, portable, and ready to scale.
+*   **Remote Monitoring:** A Rust-based `firmware` simulator mimics a remote power site, sending real-time telemetry (voltage, fuel level, power load, active source, etc.) over MQTT.
+*   **Smart & Predictive Control:** A cloud-based Rust `backend` service subscribes to the data, fetches live weather forecasts, and calculates predictive runtimes for both the battery and the diesel fuel tank.
+*   **Autonomous Decision-Making:** The backend sends a complete "strategic command" to the firmware, which uses this advice to make its own tactical decisions, including switching power sources or performing an emergency shutdown.
+*   **Live Dashboard:** All historical data is stored in a TimescaleDB database and is ready to be visualized on a professional Grafana dashboard.
+*   **Scalable & Production-Ready Architecture:** The entire system is containerized with Docker and uses an MQTT message broker, making it robust, portable, and ready to scale.
 
 ## System Architecture
 
