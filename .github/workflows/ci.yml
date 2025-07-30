@@ -1,5 +1,6 @@
-name: Kasi Power CI & Benchmark
+name: Kasi Power CI & CD
 
+# This workflow runs on pushes and PRs to the main branch
 on:
   push:
     branches: [ "main" ]
@@ -8,9 +9,12 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # Define the image names here to reuse them easily
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
 
 jobs:
-  # This first job discovers which crates are in our workspace.
+  # This job discovers the crates in the workspace
   list-members:
     name: List workspace crates
     runs-on: ubuntu-latest
@@ -19,22 +23,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Login to Container Registry
-        uses: docker/login-action@v2
-        with:  
-            registry: ghcr.io 
-            username: ${{ github.actor}}
-            password: ${{ secrets.GITHUB_TOKEN}}
-            
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-      
       - name: Install jq
-        run: sudo apt-get install -y jq
-
+        run: sudo apt-get update && sudo apt-get install -y jq
       - name: Get workspace members as a JSON array
         id: list
         run: |
@@ -42,28 +34,21 @@ jobs:
           echo "Found members: $MEMBERS"
           echo "members=$MEMBERS" >> $GITHUB_OUTPUT
 
-  # This job runs for each crate found in the job above.
-  build-test-bench:
-    name: CI for ${{ matrix.member }}
+  # This job builds and tests the Rust code natively for each crate
+  build-and-test:
+    name: Build & Test ${{ matrix.member }}
     needs: list-members
     runs-on: ubuntu-latest
-    
     strategy:
       matrix:
         member: ${{ fromJson(needs.list-members.outputs.members) }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Install system dependencies (OpenSSL)
+      - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
-
       - name: Cache Cargo dependencies
         uses: actions/cache@v4
         with:
@@ -74,14 +59,59 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Build crate
         run: cargo build -p ${{ matrix.member }} --verbose
-
-      - name: Run benchmarking
-        run: cargo bench -p ${{ matrix.member }} --verbose
-      
-      # This step will only run for the 'cloud-backend' crate.
+      - name: Run tests
+        run: cargo test -p ${{ matrix.member }} --verbose
       - name: Run benchmarks
         if: matrix.member == 'cloud-backend'
         run: cargo bench -p ${{ matrix.member }} --verbose
+
+  # --- NEW JOB: This job builds and pushes the Docker images ---
+  build-and-push:
+    name: Build & Push Docker Images
+    # This job only runs if the build-and-test job completes successfully
+    needs: build-and-test
+    # This job only runs on pushes to the main branch, not on pull requests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    # These permissions are required for the GITHUB_TOKEN to push to GHCR
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        # We will build both applications in parallel
+        app: [firmware, cloud-backend]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags and labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/kasi-power-${{ matrix.app }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          # Use our single, unified Dockerfile
+          dockerfile: Dockerfile
+          # This is the magic part: tell the Dockerfile which app to build
+          build-args: |
+            APP_NAME=${{ matrix.app }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
