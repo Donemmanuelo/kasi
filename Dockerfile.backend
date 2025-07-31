@@ -10,18 +10,19 @@ COPY packages/firmware/Cargo.toml ./packages/firmware/
 COPY packages/cloud-backend/Cargo.toml ./packages/cloud-backend/
 
 # THIS IS THE KEY FIX: Fetch all dependencies without trying to compile.
+# This is a robust way to cache the expensive download step.
 RUN cargo fetch
 
 # --- Actual Build ---
 # Now copy the complete source code for both packages.
 COPY packages/firmware/ ./packages/firmware/
-COPY packages/cloud-backend/ ./packages/cloud-backend/ # Needed for workspace context
+COPY packages/cloud-backend/ ./packages/cloud-backend/
 
-# Build the application itself.
-RUN cargo build --release -p firmware
+# Build the application itself. It will use the already-fetched dependencies.
+RUN cargo build --release -p cloud-backend
 
 # --- Stage 2: The Runner ---
 FROM debian:bullseye-slim
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /usr/src/app/target/release/firmware /usr/local/bin/firmware
-CMD ["/usr/local/bin/firmware"]
+COPY --from=builder /usr/src/app/target/release/cloud-backend /usr/local/bin/cloud-backend
+CMD ["/usr/local/bin/cloud-backend"]
