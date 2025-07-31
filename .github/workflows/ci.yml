@@ -72,39 +72,48 @@ jobs:
         if: matrix.member == 'cloud-backend'
         run: cargo bench -p ${{ matrix.member }} --verbose
 
-  # Job 3: This job builds and pushes Docker images, but only on a push to main.
-  build-and-push:
-    name: Build & Push Docker Images
+ 
+  # This job builds and pushes the Docker images in parallel
+  build-and-push-images:
+    name: Build & Push Docker Image for ${{ matrix.app }}
+    # This job only runs after the native tests have passed
     needs: build-and-test
+    # This job only runs on a push to the main branch
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
       
+    # THIS IS THE KEY PART: The Matrix Strategy
     strategy:
-      # Use the same dynamic list, which is safe because this job depends on `build-and-test`.
       matrix:
-        app: ${{ fromJson(needs.list-members.outputs.members) }}
+        # We define a variable 'app' with our two application names
+        app: [firmware, cloud-backend]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Log in to the GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
+          # The image name is now dynamic based on the matrix variable
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/kasi-power-${{ matrix.app }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
+          # We select the correct Dockerfile based on the matrix variable
           file: Dockerfile.${{ matrix.app }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
