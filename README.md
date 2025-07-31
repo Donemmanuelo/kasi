@@ -110,29 +110,6 @@ In Terminal 2, start the firmware simulator:
 cargo run -p firmware
 ```
 
-* Using Docker image
-The first to do is to pull the images from the ghcr.io:
-```bash
-docker pull ghcr.io/donemmanuelo/kasi-power-cloud-backend:main
-docker pull ghcr.io/donemmanuelo/kasi-power-firmware:main
-```
-  
-Start the infrastructure: Run Docker Compose to start the database, message broker, and dashboard. The -v flag is important on the first run.
-```bash
-docker-compose up -d --force-recreate -v
-```
-
-Run the application: You will need two separate terminals.
-In Terminal 1, start the cloud backend:
-```bash
-docker run -it 
-```
-
-In Terminal 2, start the firmware simulator:
-```bash
-cargo run -p firmware
-```
-
 ## Using the Platform (The UI)
 
 To access the dashboard, you need the IP address of the machine running Docker (e.g., localhost or a VM's IP).
