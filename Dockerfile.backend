@@ -15,9 +15,6 @@ RUN mkdir -p ./packages/cloud-backend
 COPY packages/firmware/Cargo.toml ./packages/firmware/
 COPY packages/cloud-backend/Cargo.toml ./packages/cloud-backend/
 
-# Fetch all dependencies without trying to compile.
-RUN cargo fetch
-
 # --- Actual Build ---
 # Now copy only the relevant source code.
 COPY packages/cloud-backend/ ./packages/cloud-backend/
