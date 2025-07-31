@@ -3,8 +3,13 @@ FROM rust:1.78-bullseye as builder
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 WORKDIR /usr/src/app
 
-# Copy the ENTIRE project context. This is simple and always works.
+# Copy the ENTIRE project context.
 COPY . .
+
+# THIS IS THE KEY FIX:
+# Perform a clean and update inside the container to resolve any lock file issues.
+RUN cargo clean
+RUN cargo update
 
 # Build the specific package in release mode.
 RUN cargo build --release -p cloud-backend
