@@ -104,11 +104,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          # Use our single, unified Dockerfile
-          dockerfile: Dockerfile
-          # This is the magic part: tell the Dockerfile which app to build
-          build-args: |
-            APP_NAME=${{ matrix.app }}
+          # THIS IS THE KEY FIX:
+          # Tell the build action to use the Dockerfile specific to this matrix job.
+          file: Dockerfile.${{ matrix.app }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
