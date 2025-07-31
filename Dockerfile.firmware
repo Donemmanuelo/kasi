@@ -3,16 +3,26 @@ FROM rust:1.78-bullseye as builder
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 WORKDIR /usr/src/app
 
-# Copy manifests first for better caching
+# --- Optimized Caching Layer ---
+# Copy only the main manifests first
 COPY Cargo.lock Cargo.toml ./
+
+# THIS IS THE FIX: Create the package directories inside the image
+RUN mkdir -p ./packages/firmware
+RUN mkdir -p ./packages/cloud-backend
+
+# Now that the directories exist, we can copy the package manifests
 COPY packages/firmware/Cargo.toml ./packages/firmware/
-COPY packages/cloud-backend/Cargo.toml ./packages/cloud-backend/ # Needed for workspace
+COPY packages/cloud-backend/Cargo.toml ./packages/cloud-backend/
+
+# Fetch all dependencies without trying to compile.
 RUN cargo fetch
 
-# Now copy only the relevant source code
+# --- Actual Build ---
+# Now copy only the relevant source code.
 COPY packages/firmware/ ./packages/firmware/
 
-# Build the specific package
+# Build the application itself.
 RUN cargo build --release -p firmware
 
 # --- Stage 2: The Runner ---
