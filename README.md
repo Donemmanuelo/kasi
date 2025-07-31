@@ -1,7 +1,9 @@
-# Kasi Power v3.0
+# Kasi Power
 
-![Rust Version](https://img.shields.io/badge/rust-stable-orange.svg)![Platform](https://img.shields.io/badge/platform-docker-blue.svg)
+[![Rust Version](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/tools/install)
+[![Platform](https://img.shields.io/badge/platform-docker-blue.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Donemmanuelo/kasi/blob/main/LICENSE)
+
 **An intelligent, autonomous IoT platform for monitoring and remotely controlling hybrid energy systems.**
 
 Kasi Power is a complete, end-to-end system designed to tackle real-world power challenges. It creates a smart, self-optimizing, and resilient energy grid by ingesting data from remote sites, enriching it with external intelligence like weather forecasts, and sending predictive control commands back to optimize performance, save fuel, and prevent outages.
@@ -90,6 +92,8 @@ OPENWEATHER_API_KEY=PASTE_YOUR_API_KEY_HERE
 
 **Running the Platform**
 
+* Manually
+  
 Start the infrastructure: Run Docker Compose to start the database, message broker, and dashboard. The -v flag is important on the first run.
 ```bash
 docker-compose up -d --force-recreate -v
@@ -99,6 +103,29 @@ Run the application: You will need two separate terminals.
 In Terminal 1, start the cloud backend:
 ```bash
 cargo run -p cloud-backend
+```
+
+In Terminal 2, start the firmware simulator:
+```bash
+cargo run -p firmware
+```
+
+* Using Docker image
+The first to do is to pull the images from the ghcr.io:
+```bash
+docker pull ghcr.io/donemmanuelo/kasi-power-cloud-backend:main
+docker pull ghcr.io/donemmanuelo/kasi-power-firmware:main
+```
+  
+Start the infrastructure: Run Docker Compose to start the database, message broker, and dashboard. The -v flag is important on the first run.
+```bash
+docker-compose up -d --force-recreate -v
+```
+
+Run the application: You will need two separate terminals.
+In Terminal 1, start the cloud backend:
+```bash
+docker run -it 
 ```
 
 In Terminal 2, start the firmware simulator:
