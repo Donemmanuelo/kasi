@@ -1,29 +1,14 @@
-# --- Stage 1: The Builder ---
-FROM rust:1.78-bullseye as builder
-RUN apt-get update && apt-get install -y pkg-config libssl-dev
-WORKDIR /usr/src/app
+FROM rust:latest AS builder
+WORKDIR /app
+COPY . .
 
-# --- Optimized Caching Layer ---
-# Copy only the main manifests first
-COPY Cargo.lock Cargo.toml ./
+RUN cargo build -p cloud-backend --release
 
-# THIS IS THE FIX: Create the package directories inside the image
-RUN mkdir -p ./packages/firmware
-RUN mkdir -p ./packages/cloud-backend
 
-# Now that the directories exist, we can copy the package manifests
-COPY packages/firmware/Cargo.toml ./packages/firmware/
-COPY packages/cloud-backend/Cargo.toml ./packages/cloud-backend/
+FROM debian:latest
 
-# --- Actual Build ---
-# Now copy only the relevant source code.
-COPY packages/cloud-backend/ ./packages/cloud-backend/
+RUN apt-get update && apt-get install -y libssl-dev
 
-# Build the application itself. It will use the already-fetched dependencies.
-RUN cargo build --release -p cloud-backend
+COPY --from=builder /app/target/release/cloud-backend /app/cloud-backend 
 
-# --- Stage 2: The Runner ---
-FROM debian:bullseye-slim
-RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /usr/src/app/target/release/cloud-backend /usr/local/bin/cloud-backend
-CMD ["/usr/local/bin/cloud-backend"]
+CMD ["/app/cloud-backend"]
