@@ -3,7 +3,7 @@ name: Kasi Power CI & CD
 # This workflow runs on pushes and PRs to the main branch
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "moo" ]
   pull_request:
     branches: [ "main" ]
 
