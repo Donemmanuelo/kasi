@@ -2,7 +2,7 @@ name: Kasi Power CI & CD
 
 on:
   push:
-    branches: [ "moo" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -12,117 +12,100 @@ env:
   IMAGE_OWNER: ${{ github.repository_owner }}
 
 jobs:
+  # Job 1: Discover the crates in our workspace
   list-members:
     name: List workspace crates
     runs-on: ubuntu-latest
     outputs:
       members: ${{ steps.list.outputs.members }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-node-
-
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Get workspace members
+      - name: Get workspace members as a JSON array
         id: list
         run: |
           MEMBERS=$(cargo metadata --no-deps --format-version 1 | jq -r '.workspace_members | map(sub(" .*"; ""))' | jq -c .)
+          echo "Found members: $MEMBERS"
           echo "members=$MEMBERS" >> $GITHUB_OUTPUT
 
+  # Job 2: This is the main CI job. It NEEDS the list from the job above.
+  # It will spawn parallel jobs for each crate.
   build-and-test:
-    name: Build & Test ${{ matrix.member }}
+    name: Build & Test
     needs: list-members
     runs-on: ubuntu-latest
+    
     strategy:
+      # This is the KEY FIX: The fromJson is now inside the strategy.
+      # It will be evaluated correctly after the `needs` is satisfied.
       matrix:
         member: ${{ fromJson(needs.list-members.outputs.members) }}
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-node-
-
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libssl-dev pkg-config
-
       - name: Cache Cargo dependencies
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.member }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
-
+            ${{ runner.os }}-${{ matrix.member }}-cargo-
       - name: Build crate
         run: cargo build -p ${{ matrix.member }} --verbose
-
+      - name: Run tests
+        run: cargo test -p ${{ matrix.member }} --verbose
       - name: Run benchmarks
         if: matrix.member == 'cloud-backend'
-        run: cargo bench -p cloud-backend --verbose
+        run: cargo bench -p ${{ matrix.member }} --verbose
 
+  # Job 3: This job builds and pushes Docker images, but only on a push to main.
   build-and-push:
     name: Build & Push Docker Images
     needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      
     strategy:
+      # Use the same dynamic list, which is safe because this job depends on `build-and-test`.
       matrix:
-        app: [firmware, cloud-backend]
+        app: ${{ fromJson(needs.list-members.outputs.members) }}
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-node-
-
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Log in to the GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract Docker metadata
+      - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/kasi-power-${{ matrix.app }}
-
-      - name: Install nightly Rust toolchain
-        run: |
-          rustup toolchain install nightly --profile minimal --component rustfmt --component clippy
-          rustup default nightly
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ${{ matrix.app == 'cloud-backend' && 'Dockerfile.backend' || 'Dockerfile.firmware' }}
+          file: Dockerfile.${{ matrix.app }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
