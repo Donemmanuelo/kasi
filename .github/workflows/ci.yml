@@ -1,6 +1,5 @@
 name: Kasi Power CI & CD
 
-# This workflow runs on pushes and PRs to the main branch
 on:
   push:
     branches: [ "main" ]
@@ -9,12 +8,11 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # Define the image names here to reuse them easily
   REGISTRY: ghcr.io
   IMAGE_OWNER: ${{ github.repository_owner }}
 
 jobs:
-  # This job discovers the crates in the workspace
+  # Job 1: Discover the crates in our workspace
   list-members:
     name: List workspace crates
     runs-on: ubuntu-latest
@@ -34,14 +32,19 @@ jobs:
           echo "Found members: $MEMBERS"
           echo "members=$MEMBERS" >> $GITHUB_OUTPUT
 
-  # This job builds and tests the Rust code natively for each crate
+  # Job 2: This is the main CI job. It NEEDS the list from the job above.
+  # It will spawn parallel jobs for each crate.
   build-and-test:
-    name: Build & Test ${{ matrix.member }}
+    name: Build & Test
     needs: list-members
     runs-on: ubuntu-latest
+    
     strategy:
+      # This is the KEY FIX: The fromJson is now inside the strategy.
+      # It will be evaluated correctly after the `needs` is satisfied.
       matrix:
         member: ${{ fromJson(needs.list-members.outputs.members) }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -58,29 +61,34 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.member }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.member }}-cargo-
       - name: Build crate
         run: cargo build -p ${{ matrix.member }} --verbose
+      - name: Run tests
+        run: cargo test -p ${{ matrix.member }} --verbose
       - name: Run benchmarks
-        run: cargo bench -p cloud-backend --verbose
+        if: matrix.member == 'cloud-backend'
+        run: cargo bench -p ${{ matrix.member }} --verbose
 
-  # --- NEW JOB: This job builds and pushes the Docker images ---
-  build-and-push:
-    name: Build & Push Docker Images
-    # This job only runs if the build-and-test job completes successfully
+ 
+  # This job builds and pushes the Docker images in parallel
+  build-and-push-images:
+    name: Build & Push Docker Image for ${{ matrix.app }}
+    # This job only runs after the native tests have passed
     needs: build-and-test
-    # This job only runs on pushes to the main branch, not on pull requests
+    # This job only runs on a push to the main branch
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    
-    # These permissions are required for the GITHUB_TOKEN to push to GHCR
     permissions:
       contents: read
       packages: write
-
+      
+    # THIS IS THE KEY PART: The Matrix Strategy
     strategy:
       matrix:
-        # We will build both applications in parallel
+        # We define a variable 'app' with our two application names
         app: [firmware, cloud-backend]
 
     steps:
@@ -94,21 +102,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags and labels) for Docker
+      - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
+          # The image name is now dynamic based on the matrix variable
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/kasi-power-${{ matrix.app }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          # Use our single, unified Dockerfile
-          dockerfile: Dockerfile
-          # This is the magic part: tell the Dockerfile which app to build
-          build-args: |
-            APP_NAME=${{ matrix.app }}
+          # We select the correct Dockerfile based on the matrix variable
+          file: Dockerfile.${{ matrix.app }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
