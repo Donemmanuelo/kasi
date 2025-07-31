@@ -1,15 +1,10 @@
 # --- Stage 1: The Builder ---
 FROM rust:1.78-bullseye as builder
+# No need for libssl-dev if firmware doesn't use it, but safe to keep.
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 WORKDIR /usr/src/app
-
 # Copy the ENTIRE project context.
 COPY . .
-
-# Add a clean and update step for robustness.
-RUN cargo clean
-RUN cargo update
-
 # Build the specific package in release mode.
 RUN cargo build --release -p firmware
 
