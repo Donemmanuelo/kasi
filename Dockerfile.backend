@@ -3,11 +3,16 @@ FROM rust:1.78-bullseye as builder
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 WORKDIR /usr/src/app
 
-# Copy the entire project context, including the new Cargo.lock file.
-COPY . .
+# Copy manifests first for better caching
+COPY Cargo.lock Cargo.toml ./
+COPY packages/firmware/Cargo.toml ./packages/firmware/
+COPY packages/cloud-backend/Cargo.toml ./packages/cloud-backend/
+RUN cargo fetch
 
-# Build the specific package in release mode.
-# Cargo will automatically use the Cargo.lock file to get the correct dependency versions.
+# Now copy only the relevant source code
+COPY packages/cloud-backend/ ./packages/cloud-backend/
+
+# Build the specific package
 RUN cargo build --release -p cloud-backend
 
 # --- Stage 2: The Runner ---
