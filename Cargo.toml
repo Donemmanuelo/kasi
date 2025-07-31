@@ -1,3 +1,11 @@
 [workspace]
 resolver = "2"
 members = ["packages/firmware", "packages/cloud-backend"]
+# Add this to packages/cloud-backend/Cargo.toml
+[[bin]]
+name = "cloud-backend"
+path = "src/main.rs"
+# Add this to packages/cloud-backend/Cargo.toml
+[[bin]]
+name = "firmware"
+path = "src/main.rs"
