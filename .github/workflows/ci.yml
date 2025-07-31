@@ -67,22 +67,16 @@ jobs:
   # --- NEW JOB: This job builds and pushes the Docker images ---
   build-and-push:
     name: Build & Push Docker Images
-    # This job only runs if the build-and-test job completes successfully
     needs: build-and-test
-    # This job only runs on pushes to the main branch, not on pull requests
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # 'if' condition has been removed
     runs-on: ubuntu-latest
-    
-    # These permissions are required for the GITHUB_TOKEN to push to GHCR
     permissions:
       contents: read
       packages: write
-
     strategy:
       matrix:
-        # We will build both applications in parallel
         app: [firmware, cloud-backend]
-
+        
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
