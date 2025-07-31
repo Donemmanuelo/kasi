@@ -1,13 +1,29 @@
-# --- Builder Stage ---
+# --- Stage 1: The Builder ---
+# Using a specific, verified Debian Bullseye-based image
 FROM rust:1.78-bullseye as builder
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
-WORKDIR /usr/src/kasi-power
-COPY . .
+WORKDIR /usr/src/app
+
+# --- Optimized Caching Layer ---
+# Copy only manifests to cache dependencies
+COPY Cargo.lock Cargo.toml ./
+COPY packages/firmware/Cargo.toml ./packages/firmware/
+COPY packages/cloud-backend/Cargo.toml ./packages/cloud-backend/
+# Create dummy files to allow dependency-only build
+RUN mkdir -p ./packages/firmware/src && echo "fn main() {}" > ./packages/firmware/src/main.rs
+RUN mkdir -p ./packages/cloud-backend/src && echo "fn main() {}" > ./packages/cloud-backend/src/main.rs
+RUN mkdir -p ./packages/cloud-backend/benches && echo "fn main() {}" > ./packages/cloud-backend/benches/telemetry_benchmark.rs
+# Build dependencies only. This layer is cached.
+RUN cargo build --release
+
+# --- Actual Build ---
+# Now copy the real source code. This invalidates the cache less often.
+COPY packages/cloud-backend/ ./packages/cloud-backend/
+# Build the application itself
 RUN cargo build --release -p cloud-backend
 
-# --- Runner Stage ---
+# --- Stage 2: The Runner ---
 FROM debian:bullseye-slim
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /usr/src/kasi-power/target/release/cloud-backend /usr/local/bin/cloud-backend
-# CMD is now hardcoded, explicit, and correct
+COPY --from=builder /usr/src/app/target/release/cloud-backend /usr/local/bin/cloud-backend
 CMD ["/usr/local/bin/cloud-backend"]
