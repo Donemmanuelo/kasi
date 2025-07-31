@@ -3,26 +3,16 @@ FROM rust:1.78-bullseye as builder
 RUN apt-get update && apt-get install -y pkg-config libssl-dev
 WORKDIR /usr/src/app
 
-# --- Optimized Caching Layer ---
-# Copy all manifests.
-COPY Cargo.lock Cargo.toml ./
-COPY packages/firmware/Cargo.toml ./packages/firmware/
-COPY packages/cloud-backend/Cargo.toml ./packages/cloud-backend/
+# Copy the ENTIRE project context. This is simple and always works.
+COPY . .
 
-# THIS IS THE KEY FIX: Fetch all dependencies without trying to compile.
-# This is a robust way to cache the expensive download step.
-RUN cargo fetch
-
-# --- Actual Build ---
-# Now copy the complete source code for both packages.
-COPY packages/firmware/ ./packages/firmware/
-COPY packages/cloud-backend/ ./packages/cloud-backend/
-
-# Build the application itself. It will use the already-fetched dependencies.
+# Build the specific package in release mode.
 RUN cargo build --release -p cloud-backend
 
 # --- Stage 2: The Runner ---
 FROM debian:bullseye-slim
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Copy only the final compiled binary from the builder stage.
 COPY --from=builder /usr/src/app/target/release/cloud-backend /usr/local/bin/cloud-backend
+# Set the command to run the application.
 CMD ["/usr/local/bin/cloud-backend"]
