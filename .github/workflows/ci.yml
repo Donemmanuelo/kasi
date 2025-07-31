@@ -100,7 +100,7 @@ jobs:
           context: .
           # THIS IS THE KEY FIX:
           # Tell the build action to use the Dockerfile specific to this matrix job.
-          file: Dockerfile.${{ matrix.app }}
+          file: ${{ matrix.app == 'cloud-backend' && 'Dockerfile.backend' || 'Dockerfile.firmware' }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
