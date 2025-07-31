@@ -6,16 +6,31 @@ services:
       - "1883:1883"
     volumes:
       - ./mosquitto/config:/mosquitto/config
+    # THIS IS THE CORRECTED HEALTHCHECK
+    healthcheck:
+      # This command checks if the service is listening on port 1883.
+      # It's more reliable as it doesn't depend on client tools.
+      test: ["CMD-SHELL", "netstat -tln | grep 1883"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
   timescaledb:
     image: timescale/timescaledb:latest-pg14
     container_name: timescaledb-v3
     environment:
       - POSTGRES_PASSWORD=kasi_power_pass
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=kasi_power
     ports:
-      - "5432:5432" # Expose for local debugging
+      - "5432:5432"
     volumes:
       - ./timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kasi_power"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
 
   grafana:
     image: grafana/grafana-oss:latest
@@ -28,31 +43,31 @@ services:
     volumes:
       - ./grafana_data:/var/lib/grafana
     depends_on:
-      - timescaledb
+      timescaledb:
+        condition: service_healthy
 
-  # Our custom Cloud Backend Service
   cloud-backend:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        # Pass the package name to the Dockerfile
-        APP_NAME: cloud-backend
+      args: { APP_NAME: cloud-backend }
     container_name: cloud-backend-v3
+    command: /usr/local/bin/cloud-backend
     depends_on:
-      - mosquitto
-      - timescaledb
+      mosquitto:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
     env_file:
       - .env
 
-  # Our custom Firmware Simulator
   firmware:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        # Pass the package name to the Dockerfile
-        APP_NAME: firmware
+      args: { APP_NAME: firmware }
     container_name: firmware-v3
+    command: /usr/local/bin/firmware
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_healthy
